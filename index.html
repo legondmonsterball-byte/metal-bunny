@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f1ea">
+<title>Metal Bunny</title>
+<meta name="description" content="A polished chrome bunny you can spin, boop and restyle.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐰</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1d1c21; --muted:#8c867f; --line:rgba(40,30,20,.08);
+    --glass:rgba(255,255,255,.62);
+    --accent:#ff6fa8; --accent-ink:#c93d78;
+    --spring:cubic-bezier(.3,1.35,.45,1); --out:cubic-bezier(.2,.9,.25,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden}
+  body{
+    background:radial-gradient(120% 90% at 50% 40%,#fffdfa 0%,#f7f2eb 52%,#ebe3d9 100%);
+    color:var(--ink);font-family:Inter,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+    user-select:none;-webkit-user-select:none;
+  }
+  #c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab;outline:none}
+  #c.dragging{cursor:grabbing}
+
+  /* ---------- brand ---------- */
+  .brand{position:fixed;top:calc(22px + env(safe-area-inset-top));left:28px;pointer-events:none}
+  .brand h1{
+    margin:0;font-family:Unbounded,Inter,sans-serif;font-weight:700;
+    font-size:clamp(24px,3.1vw,36px);letter-spacing:-.025em;line-height:1;
+    background:linear-gradient(180deg,#6b7180 0%,#24262d 47%,#9aa0ad 53%,#34373f 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 1px 0 rgba(255,255,255,.9));
+  }
+  .brand p{margin:8px 0 0;font-size:10.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .brand p b{color:var(--accent-ink);font-weight:600;transition:color .4s}
+
+  /* ---------- top tools ---------- */
+  .tools{position:fixed;top:calc(20px + env(safe-area-inset-top));right:24px;display:flex;gap:8px}
+  .icon-btn{
+    width:42px;height:42px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+    border:1px solid rgba(255,255,255,.75);background:var(--glass);color:#45413c;
+    backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 20px -10px rgba(70,45,20,.35);
+    transition:transform .18s var(--out),background .25s,color .25s,border-color .25s;
+  }
+  .icon-btn:hover{background:rgba(255,255,255,.82)}
+  .icon-btn:active{transform:scale(.92)}
+  .icon-btn[aria-pressed="true"]{
+    background:color-mix(in srgb,var(--accent) 15%,rgba(255,255,255,.7));
+    color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 30%,transparent);
+  }
+  .icon-btn svg{width:19px;height:19px}
+
+  /* ---------- dock ---------- */
+  .dock{
+    position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));
+    width:min(452px,calc(100% - 32px));transform:translateX(-50%);
+    padding:8px;border-radius:28px;
+    background:var(--glass);border:1px solid rgba(255,255,255,.8);
+    backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 30px 60px -30px rgba(80,50,20,.42),0 2px 8px rgba(80,50,20,.05);
+  }
+  .tabs{position:relative;display:grid;grid-template-columns:repeat(3,1fr);padding:4px;border-radius:20px;background:rgba(40,30,20,.045)}
+  .tab-pill{
+    position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/3);border-radius:16px;background:#fff;
+    box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 14px -6px rgba(60,40,20,.22);
+    transition:transform .42s var(--spring);
+  }
+  .tabs button{
+    position:relative;z-index:1;border:0;background:none;padding:9px 0;cursor:pointer;
+    font:600 13px Inter,sans-serif;color:var(--muted);transition:color .2s;
+  }
+  .tabs button[aria-selected="true"]{color:var(--ink)}
+  .panes{position:relative;height:80px;margin-top:4px}
+  .pane{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 4px;
+    opacity:0;transform:translateY(8px) scale(.98);pointer-events:none;
+    transition:opacity .2s ease,transform .38s var(--spring);
+  }
+  .pane.on{opacity:1;transform:none;pointer-events:auto}
+  .pane.metal{flex-direction:column;gap:9px}
+
+  .swatches{display:flex;gap:clamp(5px,1.6vw,9px)}
+  .swatch{
+    --c:#ddd;width:clamp(28px,8vw,34px);aspect-ratio:1;border-radius:50%;border:0;padding:0;cursor:pointer;
+    background:
+      radial-gradient(circle at 34% 28%,rgba(255,255,255,.95) 0 7%,rgba(255,255,255,0) 22%),
+      radial-gradient(circle at 50% 120%,color-mix(in srgb,var(--c) 70%,#fff) 0 28%,transparent 46%),
+      radial-gradient(circle at 45% 40%,var(--c) 0 34%,color-mix(in srgb,var(--c) 45%,#111) 78%,color-mix(in srgb,var(--c) 80%,#000) 100%);
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.06),0 3px 8px -3px rgba(60,40,20,.4);
+    transition:transform .25s var(--spring),box-shadow .25s;
+  }
+  .swatch.holo{background:
+      radial-gradient(circle at 34% 28%,rgba(255,255,255,.95) 0 7%,rgba(255,255,255,0) 22%),
+      conic-gradient(from 200deg,#ffd1ec,#c9b8ff,#a8e6ff,#c9ffd9,#fff2b3,#ffd1ec)}
+  .swatch:hover{transform:translateY(-2px)}
+  .swatch:active{transform:scale(.9)}
+  .swatch[aria-pressed="true"]{box-shadow:0 0 0 2.5px #fff,0 0 0 4px var(--ink),0 6px 12px -4px rgba(60,40,20,.45);transform:translateY(-2px)}
+  .metal-name{font-size:11.5px;font-weight:600;letter-spacing:.06em;color:var(--muted);height:14px}
+
+  .chip{
+    flex:1;min-width:0;height:64px;border-radius:18px;border:1px solid transparent;cursor:pointer;
+    background:rgba(40,30,20,.04);color:#5a554f;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    font:600 11.5px Inter,sans-serif;letter-spacing:.01em;
+    transition:background .25s,color .25s,border-color .25s,transform .2s var(--out);
+  }
+  .chip:hover{background:rgba(40,30,20,.07)}
+  .chip:active{transform:scale(.95)}
+  .chip .g{font-size:15px;line-height:18px;height:18px;font-weight:500;white-space:nowrap}
+  .chip svg{width:24px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .chip[aria-pressed="true"]{
+    background:color-mix(in srgb,var(--accent) 14%,rgba(255,255,255,.55));
+    color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 28%,transparent);
+  }
+
+  .hint{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom));
+    font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.02em;white-space:nowrap;
+    display:flex;align-items:center;gap:8px;pointer-events:none;transition:opacity .6s;
+  }
+  .hint i{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.5}
+  .hint.gone{opacity:0}
+
+  /* ---------- intro ---------- */
+  .brand,.tools,.dock,.hint{opacity:0}
+  .brand{transform:translateY(-8px)}
+  .tools{transform:translateY(-8px)}
+  .dock{transform:translate(-50%,24px)}
+  body.ready .brand,body.ready .tools{opacity:1;transform:none;transition:opacity .6s ease,transform .7s var(--out)}
+  body.ready .tools{transition-delay:.08s}
+  body.ready .dock{opacity:1;transform:translate(-50%,0);transition:opacity .5s ease .12s,transform .7s var(--spring) .12s}
+  body.ready .hint:not(.gone){opacity:1;transition:opacity .6s ease .5s}
+  body.calm *{transition-duration:.01s!important;transition-delay:0s!important}
+
+  .nogl{position:fixed;inset:0;display:none;place-items:center;text-align:center;color:var(--muted);font-size:14px;padding:24px}
+  body.nogl-on .nogl{display:grid}
+
+  @media (max-width:640px){
+    .brand{left:18px;top:calc(18px + env(safe-area-inset-top))}
+    .tools{right:14px;top:calc(16px + env(safe-area-inset-top));gap:6px}
+    .icon-btn{width:38px;height:38px}
+    .chip{height:58px;border-radius:16px}
+    .hint{bottom:calc(140px + env(safe-area-inset-bottom))}
+  }
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"}}</script>
+</head>
+<body>
+<canvas id="c" tabindex="0" aria-label="Metal Bunny. Drag to spin, click to boop."></canvas>
+
+<header class="brand">
+  <h1>Metal Bunny</h1>
+  <p>No. 001 · <b id="alloy">Mirror Chrome</b></p>
+</header>
+
+<div class="tools">
+  <button class="icon-btn" id="spinBtn" aria-pressed="false" aria-label="Turntable" title="Turntable">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20v-4.5h4.5"/></svg>
+  </button>
+  <button class="icon-btn" id="motionBtn" aria-pressed="true" aria-label="Effects" title="Effects">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3.5c.5 3.6 1.9 5 5.5 5.5-3.6.5-5 1.9-5.5 5.5-.5-3.6-1.9-5-5.5-5.5 3.6-.5 5-1.9 5.5-5.5Z"/><path d="M18.5 14.5c.25 1.7.8 2.25 2.5 2.5-1.7.25-2.25.8-2.5 2.5-.25-1.7-.8-2.25-2.5-2.5 1.7-.25 2.25-.8 2.5-2.5Z"/></svg>
+  </button>
+  <button class="icon-btn" id="snapBtn" aria-label="Save picture" title="Save picture">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5Z"/><circle cx="12" cy="12.5" r="3.4"/></svg>
+  </button>
+</div>
+
+<div class="hint" id="hint">Drag to spin <i></i> Tap to boop</div>
+
+<nav class="dock" aria-label="Customize">
+  <div class="tabs" role="tablist">
+    <span class="tab-pill" id="pill"></span>
+    <button role="tab" data-tab="metal" aria-selected="true">Metal</button>
+    <button role="tab" data-tab="ears" aria-selected="false">Ears</button>
+    <button role="tab" data-tab="face" aria-selected="false">Face</button>
+  </div>
+  <div class="panes">
+    <div class="pane metal on" data-pane="metal">
+      <div class="swatches" id="swatches"></div>
+      <div class="metal-name" id="metalName"></div>
+    </div>
+    <div class="pane" data-pane="ears" id="earPane"></div>
+    <div class="pane" data-pane="face" id="facePane"></div>
+  </div>
+</nav>
+
+<div class="nogl">This bunny needs WebGL to shine. Try another browser.</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('metal-bunny.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('metal-bunny.' + k, JSON.stringify(v)); } catch {} },
+};
+const D2R = Math.PI / 180;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const damp = (k, dt) => 1 - Math.exp(-k * dt);
+const ss = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+
+/* =====================================================================
+   Presets
+   ===================================================================== */
+const METALS = {
+  chrome:  { name: 'Mirror Chrome', body: '#e3e6ec', accent: '#ff7fb6', ui: '#ff6fa8', ink: '#c93d78', iri: 0, coat: 0,   rough: .40 },
+  bubble:  { name: 'Bubblegum',     body: '#ff9fcc', accent: '#ff4f98', ui: '#ff5c9d', ink: '#c42a6d', iri: 0, coat: .35, rough: .46 },
+  ice:     { name: 'Ice Blue',      body: '#a8d7ff', accent: '#ff8cc0', ui: '#3d9bff', ink: '#1d6cc4', iri: 0, coat: .35, rough: .44 },
+  lime:    { name: 'Cyber Lime',    body: '#cdf26e', accent: '#ff73b3', ui: '#7cc21a', ink: '#4a8200', iri: 0, coat: .35, rough: .46 },
+  lilac:   { name: 'Lilac',         body: '#c9b6ff', accent: '#ff8fca', ui: '#8d6bff', ink: '#6141d6', iri: 0, coat: .35, rough: .44 },
+  gold:    { name: 'Gold Leaf',     body: '#ffd17c', accent: '#ff7f98', ui: '#e8a42a', ink: '#9a6500', iri: 0, coat: .2,  rough: .48 },
+  holo:    { name: 'Holographic',   body: '#eceaf6', accent: '#a98fff', ui: '#9b7bff', ink: '#6545d8', iri: 1, coat: .3,  rough: .40 },
+  gunmetal:{ name: 'Gunmetal',      body: '#5f6571', accent: '#ff5d9e', ui: '#6d7482', ink: '#2f333b', iri: 0, coat: .3,  rough: .52 },
+};
+// angles in degrees. rr: root roll (outward)  rp: root pitch (back)  bp/br: bend along length  at: where the bend lives  tw: twist
+const EARS = {
+  perky: { label: 'Perky', L: { rr: 9,  rp: 4,  bp: 14,  br: 3,   at: .62, tw: -6 }, R: { rr: 14, rp: 9,  bp: 22,  br: 14,  at: .66, tw: 10 } },
+  flop:  { label: 'Flop',  L: { rr: 13, rp: 6,  bp: 16,  br: 8,   at: .6,  tw: 0 },  R: { rr: 24, rp: 10, bp: 22,  br: 122, at: .47, tw: 6 } },
+  lop:   { label: 'Lop',   L: { rr: 80, rp: -4, bp: -10, br: 66,  at: .3,  tw: 72 }, R: { rr: 84, rp: 0,  bp: -6,  br: 74,  at: .33, tw: 76 } },
+  swept: { label: 'Swept', L: { rr: 9,  rp: 52, bp: 44,  br: 5,   at: .45, tw: 0 },  R: { rr: 15, rp: 58, bp: 52,  br: 14,  at: .5,  tw: 4 } },
+};
+const EAR_ICONS = {
+  perky: '<circle cx="12" cy="17.5" r="4.5"/><ellipse cx="9.5" cy="7" rx="2" ry="5" transform="rotate(-8 9.5 7)"/><ellipse cx="14.8" cy="7" rx="2" ry="5" transform="rotate(12 14.8 7)"/>',
+  flop:  '<circle cx="12" cy="17.5" r="4.5"/><ellipse cx="9.5" cy="7" rx="2" ry="5" transform="rotate(-8 9.5 7)"/><path d="M13.4 13.2 15 6.4c.6-2.4 3.5-2.8 4.9-.8 1 1.5.9 3.8-.1 5.4-.6.9-1.7.6-1.8-.4-.1-1.2-1-1.6-1.6-.6l-1.3 3.6"/>',
+  lop:   '<circle cx="12" cy="13" r="5"/><ellipse cx="5.6" cy="15" rx="1.9" ry="4.8" transform="rotate(18 5.6 15)"/><ellipse cx="18.4" cy="15" rx="1.9" ry="4.8" transform="rotate(-18 18.4 15)"/>',
+  swept: '<circle cx="12" cy="16.5" r="4.8"/><ellipse cx="7.6" cy="9" rx="1.8" ry="4.6" transform="rotate(-38 7.6 9)"/><ellipse cx="16.6" cy="9" rx="1.8" ry="4.6" transform="rotate(42 16.6 9)"/>',
+};
+// eo: eye open, arc: ^ closed eye, mw/mc/mo/mop/mt: mouth width/curve/omega/open/top-open, earR/earB: ear droop, hr/hp: head roll/pitch
+const FACES = {
+  happy:  { label: 'Happy',  g: '•ω•', eoL: 1, eoR: 1, arcL: 0, arcR: 0, es: 1,    heart: 0, mw: .072, mc: .45, mo: 1,  mop: 0,   mt: .1, blush: .55, earR: 0,  earB: 0,  hr: .03,  hp: 0 },
+  wink:   { label: 'Wink',   g: '•‿~', eoL: 1, eoR: 0, arcL: 0, arcR: 1, es: 1.03, heart: 0, mw: .085, mc: 1,   mo: .2, mop: .5,  mt: .1, blush: .85, earR: 5,  earB: 6,  hr: .11,  hp: -.02 },
+  wow:    { label: 'Wow',    g: '°o°', eoL: 1, eoR: 1, arcL: 0, arcR: 0, es: 1.2,  heart: 0, mw: .04,  mc: 0,   mo: 0,  mop: .85, mt: .8, blush: .3,  earR: -7, earB: -14, hr: 0,   hp: -.07 },
+  sleepy: { label: 'Sleepy', g: '–‿–', eoL: .14, eoR: .12, arcL: 0, arcR: 0, es: 1, heart: 0, mw: .045, mc: .25, mo: .5, mop: .1,  mt: .3, blush: .4,  earR: 16, earB: 34, hr: .07,  hp: .12 },
+  love:   { label: 'Love',   g: '♥‿♥', eoL: 0, eoR: 0, arcL: 0, arcR: 0, es: 1,    heart: 1, mw: .085, mc: 1.1, mo: .25,mop: .55, mt: .1, blush: 1,   earR: -3, earB: 0,  hr: -.09, hp: -.03 },
+  boop:   { eoL: 0, eoR: 0, arcL: 1, arcR: 1, es: 1, heart: 0, mw: .08, mc: 1.1, mo: .2, mop: .62, mt: .1, blush: 1, earR: -6, earB: -6, hr: .05, hp: -.05 },
+};
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const S = {
+  metal: store.get('metal', 'chrome'),
+  ears: store.get('ears', 'flop'),
+  face: store.get('face', 'happy'),
+  motion: store.get('motion', !reduceMotion),
+  spin: store.get('spin', false),
+};
+if (!METALS[S.metal]) S.metal = 'chrome';
+if (!EARS[S.ears]) S.ears = 'flop';
+if (!FACES[S.face] || S.face === 'boop') S.face = 'happy';
+
+/* =====================================================================
+   Renderer / scene
+   ===================================================================== */
+const canvas = $('#c');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+} catch (e) {
+  document.body.classList.add('nogl-on', 'ready');
+  throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.02;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.VSMShadowMap;
+renderer.setClearColor(0x000000, 0);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(26, 1, 0.1, 100);
+const camTarget = new THREE.Vector3(0, 1.66, 0);
+let camDist = 9, camEl = 0.1, camElTarget = 0.1;
+
+/* ---------- studio environment (procedural HDR) ---------- */
+function makeEnvironment() {
+  const W = 512, H = 256, data = new Uint16Array(W * H * 4), toH = THREE.DataUtils.toHalfFloat;
+  const wrap = d => Math.abs((((d + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
+  // lon (atan2(z,x)), lat, half-width, half-height, softness, rgb
+  const L = [
+    [Math.PI / 2, 1.0, .58, .3, .12, 7.2, 7.0, 6.6],   // overhead key, front
+    [Math.PI, .35, .1, .55, .05, 5.6, 5.5, 5.3],        // left strip
+    [.05, .3, .08, .5, .04, 4.2, 4.2, 4.2],             // right strip
+    [-Math.PI / 2, .42, .58, .09, .05, 4.6, 4.5, 4.3],  // back rim bar
+    [2.35, .05, .32, .22, .14, 1.7, .62, 1.05],         // pink card
+    [.8, .02, .3, .22, .14, .55, .95, 1.75],            // blue card
+  ];
+  for (let j = 0; j < H; j++) {
+    const lat = ((j + .5) / H - .5) * Math.PI;
+    let r, g, b;
+    if (lat >= 0) { const t = ss(0, 1.3, lat); r = .8 + .24 * t; g = .77 + .25 * t; b = .73 + .26 * t; }
+    else { const t = ss(0, -1.2, lat); r = .68 - .22 * t; g = .62 - .2 * t; b = .56 - .18 * t; }
+    const dark = 1 - .86 * (1 - ss(.02, .17, Math.abs(lat - .02)));   // horizon line = chrome definition
+    r *= dark; g *= dark; b *= dark;
+    const cl = Math.cos(lat);
+    for (let i = 0; i < W; i++) {
+      const lon = ((i + .5) / W - .5) * 2 * Math.PI;
+      let R = r, G = g, B = b;
+      for (const l of L) {
+        const m = (1 - ss(l[2] - l[4], l[2] + l[4], wrap(lon - l[0]) * cl)) * (1 - ss(l[3] - l[4], l[3] + l[4], Math.abs(lat - l[1])));
+        if (m > 0) { R += m * l[5]; G += m * l[6]; B += m * l[7]; }
+      }
+      const o = (j * W + i) * 4;
+      data[o] = toH(R); data[o + 1] = toH(G); data[o + 2] = toH(B); data[o + 3] = toH(1);
+    }
+  }
+  const tex = new THREE.DataTexture(data, W, H, THREE.RGBAFormat, THREE.HalfFloatType);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.magFilter = tex.minFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  const pm = new THREE.PMREMGenerator(renderer);
+  const env = pm.fromEquirectangular(tex).texture;
+  tex.dispose(); pm.dispose();
+  return env;
+}
+scene.environment = makeEnvironment();
+
+/* ---------- scratches & wear (roughness map) ---------- */
+function makeScratchMap() {
+  const N = 1024, cv = document.createElement('canvas'); cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#3a3a3a'; g.fillRect(0, 0, N, N);
+  for (let i = 0; i < 22; i++) {
+    const x = Math.random() * N, y = Math.random() * N, r = 60 + Math.random() * 180;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(255,255,255,.07)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  g.lineCap = 'round';
+  for (let c = 0; c < 36; c++) {
+    const cx = Math.random() * N, cy = Math.random() * N, ang = Math.random() * Math.PI, n = 4 + (Math.random() * 14 | 0);
+    for (let k = 0; k < n; k++) {
+      const a = ang + (Math.random() - .5) * .35, len = 8 + Math.random() ** 2 * 95;
+      const x = cx + (Math.random() - .5) * 90, y = cy + (Math.random() - .5) * 90;
+      g.strokeStyle = `rgba(255,255,255,${.16 + Math.random() * .45})`;
+      g.lineWidth = .5 + Math.random() * 1.1;
+      g.beginPath(); g.moveTo(x, y);
+      g.quadraticCurveTo(x + Math.cos(a) * len / 2 + (Math.random() - .5) * 6, y + Math.sin(a) * len / 2 + (Math.random() - .5) * 6, x + Math.cos(a) * len, y + Math.sin(a) * len);
+      g.stroke();
+    }
+  }
+  for (let i = 0; i < 70; i++) {
+    g.fillStyle = `rgba(255,255,255,${.2 + Math.random() * .3})`;
+    g.beginPath(); g.arc(Math.random() * N, Math.random() * N, .6 + Math.random(), 0, Math.PI * 2); g.fill();
+  }
+  const id = g.getImageData(0, 0, N, N), d = id.data;
+  for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - .5) * 9; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  g.putImageData(id, 0, 0);
+  const t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 2);
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  t.colorSpace = THREE.NoColorSpace;
+  return t;
+}
+const scratch = makeScratchMap();
+
+function radialTex(stops, size = 256) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const g = cv.getContext('2d'), gr = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  for (const [o, c] of stops) gr.addColorStop(o, c);
+  g.fillStyle = gr; g.fillRect(0, 0, size, size);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+/* ---------- materials ---------- */
+const P0 = METALS[S.metal];
+const metal = new THREE.MeshPhysicalMaterial({
+  color: P0.body, metalness: 1, roughness: P0.rough, roughnessMap: scratch,
+  clearcoat: Math.max(.001, P0.coat), clearcoatRoughness: .05,
+  iridescence: Math.max(.001, P0.iri), iridescenceIOR: 1.8, iridescenceThicknessRange: [180, 560],
+});
+const enamel = new THREE.MeshPhysicalMaterial({ color: P0.accent, metalness: .25, roughness: .2, clearcoat: 1, clearcoatRoughness: .04 });
+const eyeMat = new THREE.MeshPhysicalMaterial({ color: 0x0d0c14, metalness: 0, roughness: .08, clearcoat: 1, clearcoatRoughness: .02 });
+const shineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+const mouthMat = new THREE.MeshPhysicalMaterial({ color: 0x1b1520, roughness: .25, clearcoat: 1 });
+const fillMat = new THREE.MeshPhysicalMaterial({ color: 0x3a1526, roughness: .4, side: THREE.DoubleSide });
+const blushMat = new THREE.MeshBasicMaterial({
+  map: radialTex([[0, 'rgba(255,255,255,1)'], [.45, 'rgba(255,255,255,.55)'], [1, 'rgba(255,255,255,0)']]),
+  color: 0xff6fa3, transparent: true, opacity: .3, depthWrite: false, toneMapped: false,
+  polygonOffset: true, polygonOffsetFactor: -2,
+});
+
+/* ---------- geometry helpers ---------- */
+function weldNormals(geo) {
+  geo.computeVertexNormals();
+  const p = geo.attributes.position, n = geo.attributes.normal, map = new Map();
+  for (let i = 0; i < p.count; i++) {
+    const k = `${Math.round(p.getX(i) * 1e4)},${Math.round(p.getY(i) * 1e4)},${Math.round(p.getZ(i) * 1e4)}`;
+    let a = map.get(k); if (!a) map.set(k, a = [0, 0, 0, []]);
+    a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); a[3].push(i);
+  }
+  for (const a of map.values()) {
+    if (a[3].length < 2) continue;
+    const l = Math.hypot(a[0], a[1], a[2]) || 1;
+    for (const i of a[3]) n.setXYZ(i, a[0] / l, a[1] / l, a[2] / l);
+  }
+  n.needsUpdate = true;
+  return geo;
+}
+function ellipsoid(rx, ry, rz, ws = 48, hs = 32) {
+  const g = new THREE.SphereGeometry(1, ws, hs); g.scale(rx, ry, rz); return g;
+}
+const shadowy = m => { m.castShadow = true; return m; };
+
+/* =====================================================================
+   Bunny
+   ===================================================================== */
+const root = new THREE.Group(); scene.add(root);
+const squashG = new THREE.Group(); root.add(squashG);
+const headPivot = new THREE.Group(); headPivot.position.set(0, .8, 0); squashG.add(headPivot);
+const headGroup = new THREE.Group(); headGroup.position.set(0, .62, 0); headPivot.add(headGroup);
+const pickables = [];
+
+/* ---------- head: ellipsoid with chubby cheeks + soft muzzle ---------- */
+const HR = new THREE.Vector3(1.04, .9, .92).multiplyScalar(.95);
+function makeHeadGeo(ws, hs) {
+  const g = new THREE.SphereGeometry(1, ws, hs), p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const front = ss(-.25, .45, v.z);
+    const cheek = .085 * Math.exp(-((Math.abs(v.x) - .52) ** 2 + (v.y + .34) ** 2) / .07) * front;
+    const muzzle = .045 * Math.exp(-(v.x * v.x / .035 + (v.y + .32) ** 2 / .025)) * front;
+    const b = cheek + muzzle;
+    let y = v.y * HR.y + v.y * b;
+    if (v.y < -.55) y *= 1 - .07 * ss(-.55, -1, v.y);
+    p.setXYZ(i, v.x * HR.x + v.x * b, y, v.z * HR.z + v.z * b);
+  }
+  return weldNormals(g);
+}
+const headMesh = shadowy(new THREE.Mesh(makeHeadGeo(128, 96), metal));
+headGroup.add(headMesh); pickables.push(headMesh);
+
+/* face height-field so features hug the surface */
+const HF = { x0: -.8, x1: .8, y0: -.7, y1: .4, nx: 33, ny: 23, z: null };
+{
+  const probe = new THREE.Mesh(makeHeadGeo(64, 48)); probe.updateMatrixWorld();
+  const rc = new THREE.Raycaster(), dir = new THREE.Vector3(0, 0, -1), o = new THREE.Vector3();
+  HF.z = new Float32Array(HF.nx * HF.ny);
+  for (let j = 0; j < HF.ny; j++) for (let i = 0; i < HF.nx; i++) {
+    const x = HF.x0 + (HF.x1 - HF.x0) * i / (HF.nx - 1), y = HF.y0 + (HF.y1 - HF.y0) * j / (HF.ny - 1);
+    rc.set(o.set(x, y, 3), dir);
+    const hit = rc.intersectObject(probe)[0];
+    HF.z[j * HF.nx + i] = hit ? hit.point.z : 0;
+  }
+  probe.geometry.dispose();
+}
+function faceZ(x, y) {
+  const fx = clamp((x - HF.x0) / (HF.x1 - HF.x0) * (HF.nx - 1), 0, HF.nx - 1.001);
+  const fy = clamp((y - HF.y0) / (HF.y1 - HF.y0) * (HF.ny - 1), 0, HF.ny - 1.001);
+  const i = fx | 0, j = fy | 0, u = fx - i, v = fy - j, Z = HF.z, n = HF.nx;
+  return (Z[j * n + i] * (1 - u) + Z[j * n + i + 1] * u) * (1 - v) + (Z[(j + 1) * n + i] * (1 - u) + Z[(j + 1) * n + i + 1] * u) * v;
+}
+function faceNormal(x, y) {
+  const e = .03;
+  return new THREE.Vector3(-(faceZ(x + e, y) - faceZ(x - e, y)) / (2 * e), -(faceZ(x, y + e) - faceZ(x, y - e)) / (2 * e), 1).normalize();
+}
+const UP = new THREE.Vector3(0, 1, 0);
+function placeOnFace(obj, x, y, off = 0) {
+  const n = faceNormal(x, y), z = faceZ(x, y);
+  obj.position.set(x, y, z).addScaledVector(n, off);
+  const X = new THREE.Vector3().crossVectors(UP, n).normalize(), Y = new THREE.Vector3().crossVectors(n, X);
+  obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, n));
+  return obj;
+}
+
+/* ---------- heart shape (eyes + chest gem) ---------- */
+function heartGeo(size, depth) {
+  const s = new THREE.Shape();
+  s.moveTo(25, 25); s.bezierCurveTo(25, 25, 20, 0, 0, 0); s.bezierCurveTo(-30, 0, -30, 35, -30, 35);
+  s.bezierCurveTo(-30, 55, -10, 77, 25, 95); s.bezierCurveTo(60, 77, 80, 55, 80, 35);
+  s.bezierCurveTo(80, 35, 80, 0, 50, 0); s.bezierCurveTo(35, 0, 25, 25, 25, 25);
+  const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: 9, bevelSize: 7, bevelSegments: 6, curveSegments: 24 });
+  g.center(); const k = size / 110; g.scale(k, k, k); g.rotateZ(Math.PI);
+  return g;
+}
+
+/* ---------- eyes ---------- */
+const EYE_X = .355, EYE_Y = -.02;
+const heartEyeGeo = heartGeo(.2, 14);
+const eyes = [-1, 1].map(side => {
+  const g = placeOnFace(new THREE.Group(), side * EYE_X, EYE_Y, -.006);
+  g.rotateZ(-side * .04);
+  const inner = new THREE.Group(); g.add(inner);
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), eyeMat); ball.scale.set(.102, .132, .056);
+  const s1 = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), shineMat); s1.scale.set(.03, .034, .012); s1.position.set(-.028, .046, .046);
+  const s2 = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), shineMat); s2.scale.set(.014, .014, .008); s2.position.set(.034, -.04, .044);
+  inner.add(ball, s1, s2);
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(.072, .017, 12, 40, Math.PI), mouthMat); arc.position.set(0, -.03, .012);
+  const heart = new THREE.Mesh(heartEyeGeo, enamel); heart.position.z = .02;
+  g.add(arc, heart);
+  headGroup.add(g);
+  return { g, inner, arc, heart, shine: [s1, s2] };
+});
+
+/* ---------- nose ---------- */
+{
+  const g = new THREE.SphereGeometry(1, 32, 24), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setX(i, p.getX(i) * (.55 + .45 * (p.getY(i) * .5 + .5)));
+  g.scale(.062, .044, .04); weldNormals(g);
+  const nose = placeOnFace(new THREE.Mesh(g, enamel), 0, -.215, .012);
+  headGroup.add(nose);
+}
+
+/* ---------- blush ---------- */
+const blushes = [-1, 1].map(side => {
+  const m = placeOnFace(new THREE.Mesh(new THREE.PlaneGeometry(.26, .15), blushMat), side * .58, -.24, .016);
+  headGroup.add(m); return m;
+});
+
+/* ---------- mouth (morphing tube + fill) ---------- */
+const MOUTH_Y = -.335, MN = 36;
+const mouthTube = new THREE.Mesh(new THREE.BufferGeometry(), mouthMat);
+const fillGeo = new THREE.BufferGeometry();
+fillGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array((MN + 1) * 3), 3));
+{ const idx = []; for (let i = 0; i < MN; i++) idx.push(0, 1 + i, 1 + (i + 1) % MN); fillGeo.setIndex(idx); }
+const mouthFill = new THREE.Mesh(fillGeo, fillMat);
+const tongue = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), enamel);
+headGroup.add(mouthTube, mouthFill, tongue);
+let mouthSig = '';
+function updateMouth(E) {
+  const sig = `${E.mw.toFixed(4)}${E.mc.toFixed(4)}${E.mo.toFixed(4)}${E.mop.toFixed(4)}${E.mt.toFixed(4)}`;
+  if (sig === mouthSig) return; mouthSig = sig;
+  const pts = [], fp = fillGeo.attributes.position; let cx = 0, cy = 0;
+  for (let i = 0; i < MN; i++) {
+    const th = i / MN * Math.PI * 2, c = Math.cos(th), s = Math.sin(th);
+    const x = E.mw * c;
+    let y = MOUTH_Y + E.mc * .03 * c * c - E.mo * .022 * Math.sin(Math.PI * Math.abs(c));
+    y += s < 0 ? s * E.mop * .075 : s * (E.mop * .075 * E.mt + .0012);
+    pts.push(new THREE.Vector3(x, y, faceZ(x, y) + .005));
+    fp.setXYZ(1 + i, x, y, faceZ(x, y) + .002);
+    cx += x; cy += y;
+  }
+  cx /= MN; cy /= MN; fp.setXYZ(0, cx, cy, faceZ(cx, cy) + .002);
+  fp.needsUpdate = true; fillGeo.computeVertexNormals(); fillGeo.computeBoundingSphere();
+  mouthTube.geometry.dispose();
+  mouthTube.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, 'centripetal'), 120, .0115, 8, true);
+  mouthFill.visible = E.mop > .03;
+  tongue.visible = E.mop > .2 && E.mt < .5;
+  const ty = MOUTH_Y - E.mop * .05 + E.mc * .006;
+  tongue.position.set(0, ty, faceZ(0, ty) + .003);
+  tongue.scale.set(E.mw * .5, Math.max(.001, E.mop * .022), .008);
+}
+
+/* ---------- ears: swept, flexible, spring-driven ---------- */
+const EAR_N = 26, EAR_M = 22, EAR_W = .23, EAR_D = .07;
+const AX = new THREE.Vector3(1, 0, 0), AZ = new THREE.Vector3(0, 0, 1);
+const earProf = t => Math.sqrt(Math.max(0, 1 - ((t - .42) / .58) ** 2));
+const innerProf = t => Math.sqrt(Math.max(0, 1 - ((t - .46) / .44) ** 2));
+function earGeometry() {
+  const count = (EAR_N + 1) * EAR_M + 1, g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+  const uv = new Float32Array(count * 2), idx = [];
+  for (let i = 0; i <= EAR_N; i++) for (let j = 0; j < EAR_M; j++) { const k = i * EAR_M + j; uv[k * 2] = j / EAR_M; uv[k * 2 + 1] = i / EAR_N; }
+  uv[(count - 1) * 2] = .5;
+  for (let i = 0; i < EAR_N; i++) for (let j = 0; j < EAR_M; j++) {
+    const a = i * EAR_M + j, b = (i + 1) * EAR_M + j, c = i * EAR_M + (j + 1) % EAR_M, d = (i + 1) * EAR_M + (j + 1) % EAR_M;
+    idx.push(a, b, c, b, d, c);
+  }
+  for (let j = 0; j < EAR_M; j++) idx.push(count - 1, j, (j + 1) % EAR_M);
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(idx);
+  return g;
+}
+const earU = []; { let s = 0; for (let i = 1; i <= EAR_N; i++) s += earU[i] = (i / EAR_N) ** 1.4; for (let i = 1; i <= EAR_N; i++) earU[i] /= s; }
+const ears = [-1, 1].map(side => {
+  const outer = shadowy(new THREE.Mesh(earGeometry(), metal));
+  const inner = new THREE.Mesh(earGeometry(), enamel);
+  outer.frustumCulled = inner.frustumCulled = false;
+  headGroup.add(outer, inner); pickables.push(outer, inner);
+  const key = side < 0 ? 'L' : 'R';
+  const ear = {
+    side, key, outer, inner, cur: { ...EARS[S.ears][key] },
+    len: side < 0 ? 1.42 : 1.5, root: new THREE.Vector3(side * .36, .66, -.1),
+    sp: 0, sr: 0, vp: 0, vr: 0, phase: Math.random() * 6,
+    q: new THREE.Quaternion(), qd: new THREE.Quaternion(), qx: new THREE.Quaternion(), qz: new THREE.Quaternion(),
+    p: new THREE.Vector3(), X: new THREE.Vector3(), Z: new THREE.Vector3(), dir: new THREE.Vector3(),
+  };
+  outer.userData.ear = inner.userData.ear = ear;
+  return ear;
+});
+const earW = new Float32Array(EAR_N + 1);
+function updateEar(ear, E, t, idle) {
+  const s = ear.side, c = ear.cur;
+  const rr = (c.rr + E.earR) * D2R + ear.sr * .3, rp = c.rp * D2R + ear.sp * .3;
+  const br = (c.br + E.earB) * D2R, bp = c.bp * D2R, tw = -s * c.tw * D2R, ct = Math.cos(tw), st = Math.sin(tw);
+  let ws = 0; for (let i = 1; i <= EAR_N; i++) ws += earW[i] = Math.exp(-((((i / EAR_N) - c.at) / .17) ** 2));
+  ear.qz.setFromAxisAngle(AZ, -s * rr); ear.qx.setFromAxisAngle(AX, -rp);
+  ear.q.copy(ear.qz).multiply(ear.qx);
+  ear.p.copy(ear.root);
+  const seg = ear.len / EAR_N, po = ear.outer.geometry.attributes.position, pi = ear.inner.geometry.attributes.position;
+  const last = (EAR_N + 1) * EAR_M;
+  po.setXYZ(last, ear.p.x, ear.p.y, ear.p.z); pi.setXYZ(last, ear.p.x, ear.p.y, ear.p.z);
+  for (let i = 0; i <= EAR_N; i++) {
+    const t01 = i / EAR_N;
+    if (i > 0) {
+      const sway = idle * Math.sin(t * 1.7 + i * .22 + ear.phase) * .006;
+      const a = bp * earW[i] / ws + .7 * ear.sp * earU[i] + sway;
+      const b = br * earW[i] / ws + .7 * ear.sr * earU[i] + sway * .6;
+      ear.qz.setFromAxisAngle(AZ, -s * b); ear.qx.setFromAxisAngle(AX, -a);
+      ear.qd.copy(ear.qz).multiply(ear.qx); ear.q.multiply(ear.qd);
+      ear.p.addScaledVector(ear.dir.set(0, 1, 0).applyQuaternion(ear.q), seg);
+    }
+    const x0 = ear.X.set(1, 0, 0).applyQuaternion(ear.q), z0 = ear.Z.set(0, 0, 1).applyQuaternion(ear.q);
+    const Xx = x0.x * ct + z0.x * st, Xy = x0.y * ct + z0.y * st, Xz = x0.z * ct + z0.z * st;
+    const Zx = z0.x * ct - x0.x * st, Zy = z0.y * ct - x0.y * st, Zz = z0.z * ct - x0.z * st;
+    const pr = earProf(t01), w = EAR_W * pr, d = EAR_D * Math.pow(pr, .7);
+    const pn = innerProf(t01), wi = EAR_W * .56 * pn, di = EAR_D * .32 * Math.pow(pn, .7), off = d * .42;
+    for (let j = 0; j < EAR_M; j++) {
+      const ang = j / EAR_M * Math.PI * 2, ca = Math.cos(ang), sa = Math.sin(ang);
+      const lx = w * ca, lz = sa > 0 ? d * .55 * sa : d * sa;
+      const k = i * EAR_M + j;
+      po.setXYZ(k, ear.p.x + Xx * lx + Zx * lz, ear.p.y + Xy * lx + Zy * lz, ear.p.z + Xz * lx + Zz * lz);
+      const ix = wi * ca, iz = off + di * sa;
+      pi.setXYZ(k, ear.p.x + Xx * ix + Zx * iz, ear.p.y + Xy * ix + Zy * iz, ear.p.z + Xz * ix + Zz * iz);
+    }
+  }
+  po.needsUpdate = pi.needsUpdate = true;
+  ear.outer.geometry.computeVertexNormals(); ear.inner.geometry.computeVertexNormals();
+}
+
+/* ---------- body ---------- */
+{
+  const prof = new THREE.SplineCurve([
+    new THREE.Vector2(0, 0), new THREE.Vector2(.3, .0), new THREE.Vector2(.5, .06), new THREE.Vector2(.6, .2),
+    new THREE.Vector2(.62, .36), new THREE.Vector2(.56, .55), new THREE.Vector2(.43, .72), new THREE.Vector2(.25, .84), new THREE.Vector2(0, .88),
+  ]).getPoints(56);
+  prof[0].x = 0; prof[prof.length - 1].x = 0;
+  const bg = new THREE.LatheGeometry(prof, 96); bg.scale(1, 1, .92); weldNormals(bg);
+  const body = shadowy(new THREE.Mesh(bg, metal)); squashG.add(body); pickables.push(body);
+
+  for (const s of [-1, 1]) {
+    const foot = shadowy(new THREE.Mesh(ellipsoid(.2, .12, .27), metal));
+    foot.position.set(s * .27, .1, .36); foot.rotation.y = s * .22; squashG.add(foot); pickables.push(foot);
+    const paw = shadowy(new THREE.Mesh(ellipsoid(.125, .105, .12), metal));
+    paw.position.set(s * .18, .36, .52); paw.rotation.z = s * .4; squashG.add(paw); pickables.push(paw);
+  }
+  const tail = shadowy(new THREE.Mesh(new THREE.SphereGeometry(.17, 32, 24), metal));
+  tail.position.set(0, .22, -.55); squashG.add(tail); pickables.push(tail);
+  const gem = shadowy(new THREE.Mesh(heartGeo(.24, 18), enamel));
+  gem.position.set(0, .4, .6); gem.rotation.x = -.18; squashG.add(gem); pickables.push(gem);
+}
+
+/* ---------- floor: soft shadow + contact blob ---------- */
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ color: 0x5a3e2a, opacity: .16 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+const contact = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 2.3), new THREE.MeshBasicMaterial({
+  map: radialTex([[0, 'rgba(60,40,28,.75)'], [.35, 'rgba(60,40,28,.32)'], [.7, 'rgba(60,40,28,.06)'], [1, 'rgba(60,40,28,0)']]),
+  transparent: true, depthWrite: false, toneMapped: false,
+}));
+contact.rotation.x = -Math.PI / 2; contact.position.y = .003; contact.scale.set(1, .82, 1); scene.add(contact);
+
+const key = new THREE.DirectionalLight(0xfff6ee, 1.1);
+key.position.set(2.6, 6.5, 3.4); key.target.position.set(0, 1, 0);
+key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+Object.assign(key.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 1, far: 16 });
+key.shadow.radius = 14; key.shadow.blurSamples = 20; key.shadow.bias = -.0004;
+scene.add(key, key.target);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xe8dccf, .35));
+
+/* ---------- sparkles ---------- */
+const sparkTexCache = {};
+function sparkTex(hex) {
+  if (sparkTexCache[hex]) return sparkTexCache[hex];
+  const N = 128, cv = document.createElement('canvas'); cv.width = cv.height = N;
+  const g = cv.getContext('2d'); g.translate(N / 2, N / 2);
+  g.beginPath();
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2, a2 = a + Math.PI / 2, am = a + Math.PI / 4;
+    if (k === 0) g.moveTo(Math.cos(a) * 60, Math.sin(a) * 60);
+    g.quadraticCurveTo(Math.cos(am) * 9, Math.sin(am) * 9, Math.cos(a2) * 60, Math.sin(a2) * 60);
+  }
+  const gr = g.createRadialGradient(0, 0, 0, 0, 0, 60);
+  gr.addColorStop(0, '#fff'); gr.addColorStop(.28, '#fff'); gr.addColorStop(.6, hex); gr.addColorStop(1, hex);
+  g.fillStyle = gr; g.fill();
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  return sparkTexCache[hex] = t;
+}
+const sparks = [];
+for (let i = 0; i < 28; i++) {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }));
+  sp.visible = false; scene.add(sp);
+  sparks.push({ sp, life: 0, max: 1, vel: new THREE.Vector3(), size: .2, spin: 0 });
+}
+function burst(point, n) {
+  if (!S.motion) return;
+  const tex = sparkTex(METALS[S.metal].ui);
+  let made = 0;
+  for (const s of sparks) {
+    if (made >= n) break;
+    if (s.life > 0) continue;
+    s.sp.material.map = tex; s.sp.material.needsUpdate = true;
+    s.sp.position.copy(point);
+    const a = Math.random() * Math.PI * 2, e = (Math.random() - .3) * 1.2;
+    s.vel.set(Math.cos(a) * Math.cos(e), Math.sin(e) + .6, Math.sin(a) * Math.cos(e)).multiplyScalar(1.4 + Math.random() * 1.6);
+    s.max = s.life = .55 + Math.random() * .4; s.size = .1 + Math.random() * .14; s.spin = (Math.random() - .5) * 6;
+    s.sp.visible = true; made++;
+  }
+}
+
+/* =====================================================================
+   State, interaction, animation
+   ===================================================================== */
+const E = { ...FACES[S.face] };
+const target = { body: new THREE.Color(P0.body), accent: new THREE.Color(P0.accent), iri: P0.iri, coat: P0.coat, rough: P0.rough };
+let tempFace = null, tempUntil = 0;
+const phys = { y: 0, vy: 0, sq: 0, sqv: 0, yaw: 0, yawVel: 0, prevYaw: 0, introDone: false };
+const head = { yaw: 0, pitch: 0, roll: 0, prevYaw: 0, prevPitch: 0, nod: 0, nodV: 0 };
+const look = { x: 0, y: 0, active: false, last: 0 };
+let time = 0, nextBlink = 1.8, blinkT = -1, nextTwitch = 3, envPulse = 0;
+let lastInteraction = 0;
+
+function flashFace(k, dur) { tempFace = k; tempUntil = time + dur; }
+function earKick(ear, roll, pitch) { ear.vr += roll; ear.vp += pitch; }
+
+function boop(point) {
+  if (phys.y <= 0.001 && phys.vy === 0) { phys.vy = S.motion ? 3.1 : 1.6; phys.sq = -.05; }
+  flashFace('boop', .95);
+  for (const e of ears) earKick(e, 3 + Math.random() * 3, (Math.random() - .5) * 5);
+  burst(point, 10);
+}
+function earFlick(ear, point) {
+  earKick(ear, 7 + Math.random() * 3, (Math.random() - .5) * 8);
+  flashFace('wow', .6);
+  head.nodV -= 1.5;
+  burst(point, 6);
+}
+
+/* ---------- pointer ---------- */
+const ptr = { down: false, id: -1, sx: 0, sy: 0, lx: 0, ly: 0, lt: 0, moved: false, vel: 0 };
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let usableCenterY = innerHeight / 2;
+
+function hideHint() { $('#hint').classList.add('gone'); }
+canvas.addEventListener('pointerdown', e => {
+  if (!phys.introDone) skipIntro();
+  canvas.setPointerCapture(e.pointerId);
+  Object.assign(ptr, { down: true, id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), moved: false, vel: 0 });
+  phys.yawVel *= .2;
+});
+canvas.addEventListener('pointermove', e => {
+  look.x = clamp((e.clientX - innerWidth / 2) / (innerWidth / 2), -1, 1);
+  look.y = clamp((usableCenterY - e.clientY) / (innerHeight / 2), -1, 1);
+  look.active = true; look.last = time;
+  if (!ptr.down || e.pointerId !== ptr.id) return;
+  const now = performance.now(), dx = e.clientX - ptr.lx, dy = e.clientY - ptr.ly;
+  if (!ptr.moved && Math.hypot(e.clientX - ptr.sx, e.clientY - ptr.sy) > 6) { ptr.moved = true; canvas.classList.add('dragging'); hideHint(); }
+  if (ptr.moved) {
+    const dYaw = dx * .0105;
+    phys.yaw += dYaw;
+    const dtp = Math.max(8, now - ptr.lt) / 1000;
+    ptr.vel = ptr.vel * .6 + (dYaw / dtp) * .4;
+    camElTarget = clamp(camElTarget + dy * .0035, -.04, .48);
+  }
+  ptr.lx = e.clientX; ptr.ly = e.clientY; ptr.lt = now;
+});
+function endPointer(e) {
+  if (!ptr.down || e.pointerId !== ptr.id) return;
+  ptr.down = false; canvas.classList.remove('dragging');
+  lastInteraction = time;
+  if (ptr.moved) {
+    phys.yawVel = performance.now() - ptr.lt > 90 ? 0 : clamp(ptr.vel, -14, 14);
+  } else {
+    hideHint();
+    ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+    for (const ear of ears) { ear.outer.geometry.computeBoundingSphere(); ear.inner.geometry.computeBoundingSphere(); }
+    const hit = raycaster.intersectObjects(pickables, false)[0];
+    if (hit) hit.object.userData.ear ? earFlick(hit.object.userData.ear, hit.point) : boop(hit.point);
+  }
+  if (e.pointerType !== 'mouse') look.active = false;
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') look.active = false; });
+canvas.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft') phys.yawVel -= 2.5;
+  else if (e.key === 'ArrowRight') phys.yawVel += 2.5;
+  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); boop(new THREE.Vector3(0, 1.6, .9)); }
+});
+
+/* ---------- UI ---------- */
+const root$ = document.documentElement;
+function applyUiColors() {
+  const p = METALS[S.metal];
+  root$.style.setProperty('--accent', p.ui); root$.style.setProperty('--accent-ink', p.ink);
+  $('#alloy').textContent = p.name; $('#metalName').textContent = p.name;
+}
+function setMetal(k, fromUser) {
+  S.metal = k; store.set('metal', k);
+  const p = METALS[k];
+  target.body.set(p.body); target.accent.set(p.accent); target.iri = p.iri; target.coat = p.coat; target.rough = p.rough;
+  document.querySelectorAll('.swatch').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === k));
+  applyUiColors();
+  if (fromUser) { envPulse = 1; for (const e of ears) earKick(e, 2, -1.5); burst(new THREE.Vector3(0, 2.1, .6), 7); }
+}
+function setEars(k, fromUser) {
+  S.ears = k; store.set('ears', k);
+  document.querySelectorAll('#earPane .chip').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === k));
+  if (fromUser) for (const e of ears) earKick(e, (Math.random() - .3) * 4, (Math.random() - .5) * 3);
+}
+function setFace(k, fromUser) {
+  S.face = k; store.set('face', k); tempFace = null;
+  document.querySelectorAll('#facePane .chip').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === k));
+  if (fromUser) { head.nodV += 2.2; if (k === 'love') burst(new THREE.Vector3(0, 2.2, .8), 8); }
+}
+function setMotion(on) {
+  S.motion = on; store.set('motion', on);
+  $('#motionBtn').setAttribute('aria-pressed', on);
+  document.body.classList.toggle('calm', !on);
+}
+function setSpin(on) { S.spin = on; store.set('spin', on); $('#spinBtn').setAttribute('aria-pressed', on); }
+
+const sw = $('#swatches');
+for (const [k, p] of Object.entries(METALS)) {
+  const b = document.createElement('button');
+  b.className = 'swatch' + (p.iri ? ' holo' : ''); b.dataset.k = k;
+  b.style.setProperty('--c', p.body); b.title = p.name; b.setAttribute('aria-label', p.name);
+  b.onclick = () => setMetal(k, true);
+  sw.appendChild(b);
+}
+for (const [k, p] of Object.entries(EARS)) {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.dataset.k = k;
+  b.innerHTML = `<svg viewBox="0 0 24 24">${EAR_ICONS[k]}</svg><span>${p.label}</span>`;
+  b.onclick = () => setEars(k, true);
+  $('#earPane').appendChild(b);
+}
+for (const [k, f] of Object.entries(FACES)) {
+  if (!f.label) continue;
+  const b = document.createElement('button');
+  b.className = 'chip'; b.dataset.k = k;
+  b.innerHTML = `<span class="g">${f.g}</span><span>${f.label}</span>`;
+  b.onclick = () => setFace(k, true);
+  $('#facePane').appendChild(b);
+}
+const tabs = [...document.querySelectorAll('.tabs button')], panes = [...document.querySelectorAll('.pane')];
+function setTab(name) {
+  tabs.forEach((b, i) => { const on = b.dataset.tab === name; b.setAttribute('aria-selected', on); if (on) $('#pill').style.transform = `translateX(${i * 100}%)`; });
+  panes.forEach(p => p.classList.toggle('on', p.dataset.pane === name));
+  store.set('tab', name);
+}
+tabs.forEach(b => b.onclick = () => setTab(b.dataset.tab));
+setTab(['metal', 'ears', 'face'].includes(store.get('tab')) ? store.get('tab') : 'metal');
+$('#spinBtn').onclick = () => setSpin(!S.spin);
+$('#motionBtn').onclick = () => setMotion(!S.motion);
+$('#snapBtn').onclick = snapshot;
+
+setMetal(S.metal); setEars(S.ears); setFace(S.face); setMotion(S.motion); setSpin(S.spin);
+
+function snapshot() {
+  render();
+  const src = renderer.domElement, c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  const g = c.getContext('2d'), w = c.width, h = c.height;
+  const gr = g.createRadialGradient(w / 2, h * .4, 0, w / 2, h * .4, Math.max(w, h) * .75);
+  gr.addColorStop(0, '#fffdfa'); gr.addColorStop(.52, '#f7f2eb'); gr.addColorStop(1, '#ebe3d9');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  g.drawImage(src, 0, 0);
+  c.toBlob(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b); a.download = `metal-bunny-${S.metal}.png`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+  burst(new THREE.Vector3(0, 2, .7), 6);
+}
+
+/* ---------- layout / camera framing ---------- */
+const dock = document.querySelector('.dock');
+function layout() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h);
+  const topH = w < 640 ? 84 : 80, botH = dock.getBoundingClientRect().height + 40;
+  const yc = (topH + h - botH) / 2, delta = h / 2 - yc;
+  usableCenterY = yc;
+  const fullH = h + 2 * Math.abs(delta);
+  camera.aspect = w / fullH;
+  camera.setViewOffset(w, fullH, 0, delta > 0 ? 2 * delta : 0, w, h);
+  const tanH = Math.tan(camera.fov * D2R / 2), usable = Math.max(120, h - topH - botH);
+  camDist = Math.max((3.55 / 2) / (tanH * usable / fullH), (3.1 / 2) / (tanH * camera.aspect), 7);
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', layout);
+layout();
+
+/* ---------- intro ---------- */
+function finishIntro() {
+  if (phys.introDone) return;
+  phys.introDone = true;
+  document.body.classList.add('ready');
+  flashFace('wink', 1.3);
+}
+function skipIntro() { phys.y = 0; phys.vy = 0; finishIntro(); }
+if (S.motion) { phys.y = 4.6; phys.yaw = -1.6; phys.yawVel = 2.2; }
+else finishIntro();
+setTimeout(finishIntro, 2600);
+
+/* ---------- main loop ---------- */
+const clock = new THREE.Clock();
+const tmpC = new THREE.Color();
+function render() { renderer.render(scene, camera); }
+
+function tick() {
+  const dt = clamp(clock.getDelta(), 1 / 240, 1 / 30);
+  time += dt;
+  const motion = S.motion ? 1 : 0;
+
+  // --- expression blend ---
+  if (tempFace && time > tempUntil) tempFace = null;
+  const F = FACES[tempFace || S.face], kf = damp(14, dt);
+  for (const k in E) if (typeof E[k] === 'number') E[k] += (F[k] - E[k]) * kf;
+
+  // --- ear pose blend (a bit lazy = floppy) ---
+  const ke = damp(6, dt);
+  for (const ear of ears) { const T = EARS[S.ears][ear.key]; for (const k in ear.cur) ear.cur[k] += (T[k] - ear.cur[k]) * ke; }
+
+  // --- material blend ---
+  const km = damp(7, dt);
+  metal.color.lerp(target.body, km); enamel.color.lerp(target.accent, km);
+  metal.iridescence = Math.max(.001, metal.iridescence + (target.iri - metal.iridescence) * km);
+  metal.clearcoat = Math.max(.001, metal.clearcoat + (target.coat - metal.clearcoat) * km);
+  metal.roughness += (target.rough - metal.roughness) * km;
+  envPulse = Math.max(0, envPulse - dt * 2.2);
+  metal.envMapIntensity = 1 + Math.sin(envPulse * Math.PI) * .55 * motion;
+  blushMat.color.copy(tmpC.set(0xff6fa3).lerp(target.accent, .35));
+
+  // --- turntable ---
+  if (!ptr.down) {
+    if (S.spin) phys.yawVel += (.5 - phys.yawVel) * damp(1.5, dt);
+    else phys.yawVel *= Math.exp(-dt * 2.4);
+    phys.yaw += phys.yawVel * dt;
+    if (!S.spin && time - lastInteraction > 4) camElTarget += (.1 - camElTarget) * damp(1, dt);
+  }
+  const yawRate = (phys.yaw - phys.prevYaw) / dt; phys.prevYaw = phys.yaw;
+  root.rotation.y = phys.yaw;
+  root.rotation.z = Math.sin(time * .8) * .012 * motion;
+
+  // --- bounce / squash ---
+  if (phys.y > 0 || phys.vy > 0) {
+    phys.vy -= 15 * dt; phys.y += phys.vy * dt;
+    if (phys.y <= 0) {
+      const impact = -phys.vy; phys.y = 0;
+      phys.sqv += impact * .26;
+      phys.vy = impact > 3.2 ? impact * .3 : 0;
+      for (const e of ears) e.vr += impact * .5;
+      if (!phys.introDone && phys.vy === 0) finishIntro();
+    }
+  }
+  phys.sqv += (-230 * phys.sq - 15 * phys.sqv) * dt; phys.sq += phys.sqv * dt;
+  const breathe = Math.sin(time * (S.face === 'sleepy' ? 1.3 : 2.3)) * .009 * (motion * .7 + .3);
+  const sq = clamp(phys.sq, -.25, .35);
+  squashG.scale.set(1 + sq * .5 - breathe * .3, 1 - sq + breathe, 1 + sq * .5 - breathe * .3);
+  root.position.y = phys.y;
+
+  // --- head: follows the pointer, nods, tilts ---
+  if (look.active && time - look.last > 3) look.active = false;
+  const facing = Math.max(0, Math.cos(phys.yaw));
+  const lx = look.active ? look.x : Math.sin(time * .35) * .25 * motion, ly = look.active ? look.y : 0;
+  head.nodV += (-80 * head.nod - 8 * head.nodV) * dt; head.nod += head.nodV * dt;
+  const kh = damp(5, dt);
+  head.yaw += (clamp(lx * .42 * facing - yawRate * .035, -.6, .6) - head.yaw) * kh;
+  head.pitch += (clamp(-ly * .2 + E.hp, -.3, .3) - head.pitch) * kh;
+  head.roll += (E.hr + Math.sin(time * 1.1) * .03 * motion - lx * .06 * facing - head.roll) * kh;
+  headPivot.rotation.set(head.pitch + head.nod * .12 + breathe * .4, head.yaw, head.roll);
+  const hYawRate = (head.yaw - head.prevYaw) / dt, hPitchRate = (head.pitch - head.prevPitch) / dt;
+  head.prevYaw = head.yaw; head.prevPitch = head.pitch;
+
+  // --- ear physics ---
+  if (time > nextTwitch) {
+    nextTwitch = time + 2.5 + Math.random() * 5;
+    if (motion) { const e = ears[Math.random() * 2 | 0]; earKick(e, 1.6 + Math.random() * 1.5, (Math.random() - .5) * 2); }
+  }
+  const totYaw = yawRate + hYawRate;
+  for (const ear of ears) {
+    const tp = -ear.side * totYaw * .12 + hPitchRate * .25 + head.nodV * .02;
+    const tr = Math.abs(totYaw) * .06 + phys.vy * .05;
+    for (let k = 0; k < 2; k++) {
+      const h = dt / 2;
+      ear.vp += (55 * (clamp(tp, -1, 1) - ear.sp) - 4.4 * ear.vp) * h; ear.sp += ear.vp * h;
+      ear.vr += (55 * (clamp(tr, -1, 1) - ear.sr) - 4.4 * ear.vr) * h; ear.sr += ear.vr * h;
+    }
+    ear.sp = clamp(ear.sp, -1.4, 1.4); ear.sr = clamp(ear.sr, -1.2, 1.4);
+    updateEar(ear, E, time, motion);
+  }
+
+  // --- eyes ---
+  if (time > nextBlink) { blinkT = 0; nextBlink = time + (Math.random() < .2 ? .28 : 2.2 + Math.random() * 3.6); }
+  let blink = 1;
+  if (blinkT >= 0) { blinkT += dt; if (blinkT < .15) blink = 1 - Math.sin(blinkT / .15 * Math.PI) * .94; else blinkT = -1; }
+  const pulse = 1 + Math.sin(time * 7) * .07 * motion;
+  eyes.forEach((e, i) => {
+    const open = (i ? E.eoR : E.eoL) * blink, arc = i ? E.arcR : E.arcL;
+    e.inner.visible = open > .015;
+    e.inner.scale.set(E.es, Math.max(.001, E.es * open), E.es);
+    e.inner.position.x = lx * .008 * facing; e.inner.position.y = ly * .006;
+    e.arc.visible = arc > .02; e.arc.scale.setScalar(Math.max(.001, arc));
+    e.heart.visible = E.heart > .02; e.heart.scale.setScalar(Math.max(.001, E.heart * pulse));
+  });
+  blushMat.opacity = E.blush * .5;
+  updateMouth(E);
+
+  // --- contact shadow + sparkles ---
+  const lift = phys.y;
+  contact.scale.set((1 + sq * .4) / (1 + lift * .35), (.82 + sq * .3) / (1 + lift * .35), 1);
+  contact.material.opacity = 1 / (1 + lift * .6);
+  for (const s of sparks) {
+    if (s.life <= 0) continue;
+    s.life -= dt;
+    if (s.life <= 0) { s.sp.visible = false; continue; }
+    const k = 1 - s.life / s.max;
+    s.vel.multiplyScalar(Math.exp(-dt * 3)); s.vel.y -= dt * 1.2;
+    s.sp.position.addScaledVector(s.vel, dt);
+    const sc = s.size * (k < .2 ? ss(0, .2, k) * 1.15 : 1.15 - ss(.2, 1, k) * 1.15);
+    s.sp.scale.setScalar(Math.max(.001, sc));
+    s.sp.material.rotation += s.spin * dt;
+  }
+
+  // --- camera ---
+  camEl += (camElTarget - camEl) * damp(6, dt);
+  camera.position.set(0, camTarget.y + Math.sin(camEl) * camDist, Math.cos(camEl) * camDist);
+  camera.lookAt(camTarget);
+
+  render();
+}
+renderer.setAnimationLoop(tick);
+</script>
+</body>
+</html>
